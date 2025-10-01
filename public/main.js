@@ -1,9 +1,19 @@
+// fungsi helper untuk menampilkan pesan
+function showMessage(msg, color = '#d9534f') {
+  const el = document.getElementById('message');
+  if (el) {
+    el.textContent = msg;
+    el.style.color = color;
+  }
+}
+
+// tambah / update record
 async function addRecord() {
   const name = document.getElementById("dnsName").value.trim();
   const ip = document.getElementById("dnsIp").value.trim();
 
   if (!name || !ip) {
-    alert("Isi Subdomain dan IP Address!");
+    showMessage('Isi Subdomain dan IP Address!');
     return;
   }
 
@@ -13,61 +23,58 @@ async function addRecord() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, ip }),
     });
+
     const data = await res.json();
-    if (res.ok) {
-      alert("✅ Success: " + JSON.stringify(data));
-      refreshRecords();
+    if (res.ok && data.success) {
+      showMessage('✅ Berhasil update record!', '#28a745');
+      await refreshRecords();
     } else {
-      alert("❌ Error: " + JSON.stringify(data));
+      showMessage(data.error || '❌ Error update record!');
     }
   } catch (err) {
     console.error("Add Record Error:", err);
-    alert("Request failed");
+    showMessage('Request failed: ' + err.message);
   }
 }
 
+// ambil records
 async function refreshRecords() {
   try {
     const res = await fetch("/api/records");
     const data = await res.json();
+    const tbody = document.querySelector("#recordsTable tbody");
+    tbody.innerHTML = "";
 
-    const table = document.createElement("table");
-    table.innerHTML = `
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>TTL</th>
-        <th>RRDatas</th>
-      </tr>
-    `;
+    if (!Array.isArray(data) || data.length === 0) {
+      const row = document.createElement("tr");
+      row.innerHTML = '<td colspan="3" style="text-align:center;">Belum ada record</td>';
+      tbody.appendChild(row);
+      return;
+    }
 
     data.forEach(record => {
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${record.name}</td>
-        <td>${record.type}</td>
         <td>${record.ttl}</td>
-        <td>${record.rrdatas.join(", ")}</td>
+        <td>${(record.rrdatas || []).join(", ")}</td>
       `;
-      table.appendChild(row);
+      tbody.appendChild(row);
     });
-
-    document.getElementById("records").innerHTML = "";
-    document.getElementById("records").appendChild(table);
-
   } catch (err) {
     console.error("Refresh Records Error:", err);
-    alert("Failed to load records");
+    showMessage('Gagal memuat records: ' + err.message);
   }
 }
 
+// jalankan setelah halaman siap
 document.addEventListener("DOMContentLoaded", () => {
   const btnAdd = document.getElementById("btnAdd");
   const btnRefresh = document.getElementById("btnRefresh");
 
   if (btnAdd) btnAdd.addEventListener("click", addRecord);
   if (btnRefresh) btnRefresh.addEventListener("click", refreshRecords);
-});
 
-// Auto load records on page load
-refreshRecords();
+  // auto load pertama kali
+  refreshRecords();
+});

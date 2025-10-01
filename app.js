@@ -47,13 +47,16 @@ app.post("/api/add", async (req, res) => {
     }
 
     const zone = dns.zone(MANAGED_ZONE);
-    const recordName = `${name}.${DOMAIN}`; // contoh: test.goldstore.id.
+    // pastikan ada titik di akhir
+    const recordName = name.endsWith(".")
+      ? `${name}${DOMAIN}`
+      : `${name}.${DOMAIN}`;
 
-    // Ambil existing record
+    // ambil record A dengan nama tsb
     const [records] = await zone.getRecords({ name: recordName, type: "A" });
     const deletions = records.length ? records : [];
 
-    // Kalau record sudah sama persis, skip
+    // kalau record sudah sama
     if (records.length && records[0].metadata.rrdatas.includes(ip)) {
       return res.json({
         success: true,
@@ -62,26 +65,19 @@ app.post("/api/add", async (req, res) => {
       });
     }
 
-    // Record baru
-    const additions = [
-      {
-        name: recordName,
-        type: "A",
-        ttl: 300,
-        rrdatas: [ip],
-      },
-    ];
-
-    // Buat perubahan
-    const [change] = await zone.createChange({ additions, deletions });
-
-    res.json({
-      success: true,
-      record: additions[0],
-      change: change.metadata,
+    // bikin record baru
+    const newRecord = zone.record("a", {
+      name: recordName,
+      data: [ip],
+      ttl: 300,
     });
+
+    const change = { additions: [newRecord], deletions };
+
+    await zone.createChange(change);
+    res.json({ success: true, record: newRecord.metadata });
   } catch (err) {
-    console.error("❌ Add error:", err.message);
+    console.error("❌ Add error:", err);
     res.status(500).json({ error: err.message });
   }
 });
