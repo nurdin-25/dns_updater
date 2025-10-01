@@ -1,11 +1,10 @@
-// app.js
 const express = require("express");
 const bodyParser = require("body-parser");
 const path = require("path");
 const dotenv = require("dotenv");
 const { DNS } = require("@google-cloud/dns");
 
-// load .env
+// Load .env
 dotenv.config();
 
 const app = express();
@@ -15,7 +14,7 @@ const PORT = process.env.PORT || 3344;
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Google Cloud DNS
+// Google Cloud DNS client
 const dns = new DNS({
   projectId: process.env.GCLOUD_PROJECT_ID,
   keyFilename: path.join(__dirname, "gcloud-dns-key.json"),
@@ -29,9 +28,9 @@ app.get("/api/records", async (req, res) => {
   try {
     const zone = dns.zone(zoneName);
     const [records] = await zone.getRecords({ type: "A" });
-    res.json(records);
+    res.json(records.map(r => r.metadata));
   } catch (err) {
-    console.error("Records error:", err);
+    console.error("❌ Records error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -39,25 +38,36 @@ app.get("/api/records", async (req, res) => {
 // ✅ API ADD / UPDATE record
 app.post("/api/add", async (req, res) => {
   const { name, ip } = req.body;
-  if (!name || !ip) return res.status(400).json({ error: "Missing name/ip" });
+  if (!name || !ip) {
+    return res.status(400).json({ error: "Missing name/ip" });
+  }
 
   try {
     const zone = dns.zone(zoneName);
+    const fqdn = `${name}.${dnsDomain}.`;
+
     const record = zone.record("a", {
-      name: `${name}.${dnsDomain}.`,
+      name: fqdn,
       ttl: 300,
       data: ip,
     });
 
-    await zone.addRecords(record);
-    res.json({ success: true });
+    // hapus record lama kalau ada
+    const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
+    const change = existing.length
+      ? { add: record, delete: existing }
+      : { add: record };
+
+    await zone.createChange(change);
+
+    res.json({ success: true, fqdn, ip });
   } catch (err) {
-    console.error("Add error:", err);
+    console.error("❌ Add error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // ✅ Run server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`🚀 DNS Updater running at http://localhost:${PORT}`);
 });
