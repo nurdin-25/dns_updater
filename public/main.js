@@ -1,4 +1,3 @@
-// fungsi helper untuk menampilkan pesan
 function showMessage(msg, color = '#d9534f') {
   const el = document.getElementById('message');
   if (el) {
@@ -7,7 +6,6 @@ function showMessage(msg, color = '#d9534f') {
   }
 }
 
-// tambah / update record
 async function addRecord() {
   const name = document.getElementById("dnsName").value.trim();
   const ip = document.getElementById("dnsIp").value.trim();
@@ -36,7 +34,6 @@ async function addRecord() {
   }
 }
 
-// ambil records
 async function refreshRecords() {
   try {
     const res = await fetch("/api/records");
@@ -65,14 +62,8 @@ async function refreshRecords() {
   }
 }
 
-// jalankan setelah halaman siap
 document.addEventListener("DOMContentLoaded", () => {
-  const addBtn = document.getElementById("addBtn");
-  const refreshBtn = document.getElementById("refreshBtn");
-
-  if (addBtn) addBtn.addEventListener("click", addRecord);
-  if (refreshBtn) refreshBtn.addEventListener("click", refreshRecords);
-
-  // load awal
+  document.getElementById("addBtn").addEventListener("click", addRecord);
+  document.getElementById("refreshBtn").addEventListener("click", refreshRecords);
   refreshRecords();
 });
