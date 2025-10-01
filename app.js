@@ -17,7 +17,7 @@ const dns = new DNS({
   keyFilename: process.env.KEY_FILE_PATH,
 });
 
-const zone = dns.zone(process.env.DNS_ZONE);
+const zone = dns.zone(process.env.MANAGED_ZONE);
 
 // ---- API ENDPOINTS ---- //
 
