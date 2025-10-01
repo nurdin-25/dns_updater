@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname, "public"))); // Serve index.html, ma
 // Google Cloud DNS Client
 const dns = new DNS({
   projectId: process.env.PROJECT_ID,
-  keyFilename: KEY_FILE_PATH,
+  keyFilename: process.env.KEY_FILE_PATH,
 });
 
 const zone = dns.zone(process.env.DNS_ZONE);
