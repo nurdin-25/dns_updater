@@ -67,7 +67,12 @@ async function refreshRecords() {
 
 // jalankan setelah halaman siap
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("btnAdd").addEventListener("click", addRecord);
-  document.getElementById("btnRefresh").addEventListener("click", refreshRecords);
+  const addBtn = document.getElementById("addBtn");
+  const refreshBtn = document.getElementById("refreshBtn");
+
+  if (addBtn) addBtn.addEventListener("click", addRecord);
+  if (refreshBtn) refreshBtn.addEventListener("click", refreshRecords);
+
+  // load awal
   refreshRecords();
 });
