@@ -1,11 +1,12 @@
-import express from "express";
-import bodyParser from "body-parser";
-import path from "path";
-import { fileURLToPath } from "url";
-import { DNS } from "@google-cloud/dns";
+// app.js
+const express = require("express");
+const bodyParser = require("body-parser");
+const path = require("path");
+const dotenv = require("dotenv");
+const { DNS } = require("@google-cloud/dns");
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// load .env
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3344;
@@ -14,15 +15,16 @@ const PORT = process.env.PORT || 3344;
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Google Cloud DNS Client
+// Google Cloud DNS
 const dns = new DNS({
   projectId: process.env.GCLOUD_PROJECT_ID,
   keyFilename: path.join(__dirname, "gcloud-dns-key.json"),
 });
 
 const zoneName = process.env.DNS_ZONE;
+const dnsDomain = process.env.DNS_DOMAIN;
 
-// ✅ GET records
+// ✅ API GET records
 app.get("/api/records", async (req, res) => {
   try {
     const zone = dns.zone(zoneName);
@@ -34,17 +36,15 @@ app.get("/api/records", async (req, res) => {
   }
 });
 
-// ✅ ADD / UPDATE record
+// ✅ API ADD / UPDATE record
 app.post("/api/add", async (req, res) => {
   const { name, ip } = req.body;
   if (!name || !ip) return res.status(400).json({ error: "Missing name/ip" });
 
   try {
     const zone = dns.zone(zoneName);
-
-    // record lama
     const record = zone.record("a", {
-      name: `${name}.${process.env.DNS_DOMAIN}.`,
+      name: `${name}.${dnsDomain}.`,
       ttl: 300,
       data: ip,
     });
