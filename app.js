@@ -1,60 +1,64 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const { DNS } = require("@google-cloud/dns");
 const path = require("path");
 const dotenv = require("dotenv");
+const { DNS } = require("@google-cloud/dns");
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3344;
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// pastikan env tersedia
-if (!process.env.PROJECT_ID || !process.env.ZONE_NAME) {
+const PROJECT_ID = process.env.PROJECT_ID;
+const ZONE_NAME = process.env.ZONE_NAME;
+const DOMAIN = process.env.DOMAIN;
+const KEY_FILE_PATH = process.env.KEY_FILE_PATH;
+const PORT = process.env.PORT || 3000;
+
+if (!PROJECT_ID || !ZONE_NAME) {
   console.error("❌ PROJECT_ID atau ZONE_NAME belum di set di .env");
   process.exit(1);
 }
 
-// init DNS
-const dns = new DNS({ projectId: process.env.PROJECT_ID });
-const zone = dns.zone(process.env.ZONE_NAME);
+const dns = new DNS({
+  projectId: PROJECT_ID,
+  keyFilename: KEY_FILE_PATH,
+});
 
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
+const zone = dns.zone(ZONE_NAME);
 
-// API GET records
+// API get records
 app.get("/api/records", async (req, res) => {
   try {
-    const [records] = await zone.getRecords();
+    const [records] = await zone.getRecords({ type: "A" });
     res.json(records);
   } catch (err) {
-    console.error("Records error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// API ADD record
+// API add record
 app.post("/api/add", async (req, res) => {
   try {
     const { name, ip } = req.body;
-    if (!name || !ip) {
-      return res.status(400).json({ error: "Name dan IP wajib diisi" });
-    }
+    if (!name || !ip) return res.status(400).json({ error: "Name dan IP wajib diisi" });
 
-    const record = zone.record("a", {
-      name: `${name}.${process.env.ZONE_NAME}.`,
+    const recordName = `${name}.${DOMAIN}`;
+    const newRecord = zone.record("A", {
+      name: recordName,
       ttl: 300,
       data: ip,
     });
 
-    await zone.addRecords(record);
+    await zone.addRecords(newRecord);
     res.json({ success: true });
   } catch (err) {
-    console.error("Add error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
+// jalankan server
 app.listen(PORT, () => {
-  console.log(`🚀 Server jalan di http://localhost:${PORT}`);
+  console.log(`✅ DNS Updater jalan di http://localhost:${PORT}`);
 });

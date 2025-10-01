@@ -1,17 +1,18 @@
-function showMessage(msg, color = "#d9534f") {
-  const el = document.getElementById("message");
+// tampilkan pesan
+function showMessage(msg, color = '#d9534f') {
+  const el = document.getElementById('message');
   if (el) {
     el.textContent = msg;
     el.style.color = color;
   }
 }
 
+// tambah / update record
 async function addRecord() {
   const name = document.getElementById("dnsName").value.trim();
   const ip = document.getElementById("dnsIp").value.trim();
-
   if (!name || !ip) {
-    showMessage("Isi Subdomain dan IP Address!");
+    showMessage('Isi Subdomain dan IP Address!');
     return;
   }
 
@@ -22,24 +23,23 @@ async function addRecord() {
       body: JSON.stringify({ name, ip }),
     });
     const data = await res.json();
-
     if (res.ok && data.success) {
-      showMessage("✅ Berhasil update record!", "#28a745");
+      showMessage('✅ Berhasil update record!', '#28a745');
       await refreshRecords();
     } else {
-      showMessage(data.error || "❌ Error update record!");
+      showMessage(data.error || '❌ Error update record!');
     }
   } catch (err) {
     console.error("Add Record Error:", err);
-    showMessage("Request failed: " + err.message);
+    showMessage('Request failed: ' + err.message);
   }
 }
 
+// ambil records
 async function refreshRecords() {
   try {
     const res = await fetch("/api/records");
     const data = await res.json();
-
     const tbody = document.querySelector("#recordsTable tbody");
     tbody.innerHTML = "";
 
@@ -61,12 +61,13 @@ async function refreshRecords() {
     });
   } catch (err) {
     console.error("Refresh Records Error:", err);
-    showMessage("Gagal memuat records: " + err.message);
+    showMessage('Gagal memuat records: ' + err.message);
   }
 }
 
+// jalankan setelah halaman siap
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("btnAdd").addEventListener("click", addRecord);
-  document.getElementById("btnRefresh").addEventListener("click", refreshRecords);
+  document.getElementById("addBtn").addEventListener("click", addRecord);
+  document.getElementById("refreshBtn").addEventListener("click", refreshRecords);
   refreshRecords();
 });
