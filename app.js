@@ -40,6 +40,7 @@ app.get("/api/records", async (req, res) => {
 
 // API: tambah / update record A
 app.post("/api/add", async (req, res) => {
+  console.log(req, res, "assu")
   try {
     const { name, ip } = req.body;
     if (!name || !ip) {

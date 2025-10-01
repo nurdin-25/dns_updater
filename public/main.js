@@ -11,7 +11,6 @@ function showMessage(msg, color = '#d9534f') {
 async function addRecord() {
   const name = document.getElementById("dnsName").value.trim();
   const ip = document.getElementById("dnsIp").value.trim();
-
   if (!name || !ip) {
     showMessage('Isi Subdomain dan IP Address!');
     return;
@@ -44,7 +43,6 @@ async function refreshRecords() {
     const data = await res.json();
     const tbody = document.querySelector("#recordsTable tbody");
     tbody.innerHTML = "";
-
     if (!Array.isArray(data) || data.length === 0) {
       const row = document.createElement("tr");
       row.innerHTML = '<td colspan="3" style="text-align:center;">Belum ada record</td>';
@@ -71,7 +69,6 @@ async function refreshRecords() {
 document.addEventListener("DOMContentLoaded", () => {
   const btnAdd = document.getElementById("btnAdd");
   const btnRefresh = document.getElementById("btnRefresh");
-
   if (btnAdd) btnAdd.addEventListener("click", addRecord);
   if (btnRefresh) btnRefresh.addEventListener("click", refreshRecords);
 
