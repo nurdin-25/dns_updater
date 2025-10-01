@@ -5,7 +5,7 @@ const path = require("path");
 const { DNS } = require("@google-cloud/dns");
 
 const app = express();
-const PORT = process.env.PORT || 3344;
+const PORT = process.env.PORT || 3344; // Ensure PORT is set from .env
 
 // Middleware
 app.use(bodyParser.json());
@@ -13,8 +13,8 @@ app.use(express.static(path.join(__dirname, "public"))); // Serve index.html, ma
 
 // Google Cloud DNS Client
 const dns = new DNS({
-  projectId: process.env.GCP_PROJECT_ID,
-  keyFilename: path.join(__dirname, "gcloud-dns-key.json"),
+  projectId: process.env.PROJECT_ID,
+  keyFilename: KEY_FILE_PATH,
 });
 
 const zone = dns.zone(process.env.DNS_ZONE);
@@ -24,7 +24,7 @@ const zone = dns.zone(process.env.DNS_ZONE);
 // ✅ Get all records
 app.get("/api/records", async (req, res) => {
   try {
-    const [records] = await zone.getRecords({ type: "A" });
+    const [records] = await zone.getRecords({ type: "A" }); // Fetch all A records
     res.json(
       records.map(r => ({
         name: r.name,
@@ -46,7 +46,7 @@ app.post("/api/add", async (req, res) => {
   }
 
   try {
-    const fqdn = `${name}.${process.env.DNS_DOMAIN}.`; // ex: test.goldstore.id.
+    const fqdn = `${name}.${DOMAIN}.`; // Ensure DOMAIN is used correctly
     const record = zone.record("a", {
       name: fqdn,
       data: ip,
