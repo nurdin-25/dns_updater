@@ -1,5 +1,5 @@
-function showMessage(msg, color = '#d9534f') {
-  const el = document.getElementById('message');
+function showMessage(msg, color = "#d9534f") {
+  const el = document.getElementById("message");
   if (el) {
     el.textContent = msg;
     el.style.color = color;
@@ -9,8 +9,9 @@ function showMessage(msg, color = '#d9534f') {
 async function addRecord() {
   const name = document.getElementById("dnsName").value.trim();
   const ip = document.getElementById("dnsIp").value.trim();
+
   if (!name || !ip) {
-    showMessage('Isi Subdomain dan IP Address!');
+    showMessage("Isi Subdomain dan IP Address!");
     return;
   }
 
@@ -20,17 +21,17 @@ async function addRecord() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, ip }),
     });
-
     const data = await res.json();
+
     if (res.ok && data.success) {
-      showMessage('✅ Berhasil update record!', '#28a745');
+      showMessage("✅ Berhasil update record!", "#28a745");
       await refreshRecords();
     } else {
-      showMessage(data.error || '❌ Error update record!');
+      showMessage(data.error || "❌ Error update record!");
     }
   } catch (err) {
     console.error("Add Record Error:", err);
-    showMessage('Request failed: ' + err.message);
+    showMessage("Request failed: " + err.message);
   }
 }
 
@@ -38,8 +39,10 @@ async function refreshRecords() {
   try {
     const res = await fetch("/api/records");
     const data = await res.json();
+
     const tbody = document.querySelector("#recordsTable tbody");
     tbody.innerHTML = "";
+
     if (!Array.isArray(data) || data.length === 0) {
       const row = document.createElement("tr");
       row.innerHTML = '<td colspan="3" style="text-align:center;">Belum ada record</td>';
@@ -58,12 +61,12 @@ async function refreshRecords() {
     });
   } catch (err) {
     console.error("Refresh Records Error:", err);
-    showMessage('Gagal memuat records: ' + err.message);
+    showMessage("Gagal memuat records: " + err.message);
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("addBtn").addEventListener("click", addRecord);
-  document.getElementById("refreshBtn").addEventListener("click", refreshRecords);
+  document.getElementById("btnAdd").addEventListener("click", addRecord);
+  document.getElementById("btnRefresh").addEventListener("click", refreshRecords);
   refreshRecords();
 });
