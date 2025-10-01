@@ -1,4 +1,3 @@
-// public/main.js
 function showMessage(msg, color = "#d9534f") {
   const el = document.getElementById("message");
   el.textContent = msg;
@@ -54,7 +53,7 @@ async function deleteRecordByFqdn(fqdn) {
   }
 }
 
-// Load records (dengan filter)
+// Load records
 async function refreshRecords(filter = "") {
   try {
     const res = await fetch("/api/records");
@@ -75,8 +74,6 @@ async function refreshRecords(filter = "") {
     list.forEach(r => {
       const row = document.createElement("tr");
       const joined = (r.rrdatas || []).join(", ");
-
-      // tombol delete hanya untuk type A
       const aksiHtml = r.type === "A"
         ? `<button class="btn-del" data-delete="${r.name}">Delete</button>`
         : "-";
@@ -99,7 +96,7 @@ async function refreshRecords(filter = "") {
 document.querySelector("#recordsTable tbody").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-delete]");
   if (!btn) return;
-  const fqdn = btn.getAttribute("data-delete"); // sudah termasuk titik di belakang
+  const fqdn = btn.getAttribute("data-delete");
   deleteRecordByFqdn(fqdn);
 });
 
