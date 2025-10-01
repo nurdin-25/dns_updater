@@ -1,43 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>DNS Updater</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 40px; background: #f8f9fa; }
-    h1 { color: #333; }
-    input { padding: 8px; margin: 5px; width: 250px; }
-    button { padding: 10px 20px; margin: 10px; background: #007BFF; border: none; color: white; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    table { margin: 20px auto; border-collapse: collapse; width: 80%; background: white; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
-    th { background: #007BFF; color: white; }
+    body { font-family: Arial, sans-serif; text-align: center; margin: 30px; }
+    table { width: 95%; margin: 18px auto; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #007bff; color: white; }
+    input { padding: 8px; margin: 5px; }
+    button { padding: 8px 12px; margin: 5px; cursor: pointer; }
+    #message { margin: 10px; font-weight: bold; min-height: 20px; }
+    .btn-del { background: #dc3545; color: #fff; border: none; padding: 6px 10px; cursor: pointer; border-radius: 4px; }
+    .btn-del:hover { opacity: .9; }
   </style>
 </head>
 <body>
   <h1>DNS Updater</h1>
 
-  <div style="margin-bottom:20px;">
-    <input type="text" id="dnsName" placeholder="Subdomain (contoh: test)" />
-    <input type="text" id="dnsIp" placeholder="IP Address (contoh: 103.xxx.xxx.xxx)" />
-    <button id="addBtn">Add / Update</button>
-    <button id="refreshBtn">Refresh</button>
-    <div id="message" style="margin:10px 0;color:#d9534f;"></div>
-  </div>
+  <input id="dnsName" placeholder="Subdomain (contoh: test)" />
+  <input id="dnsIp" placeholder="IP Address (contoh: 103.xxx.xxx.xxx)" />
+  <button id="btnAdd">Add / Update</button>
+  <button id="btnRefresh">Refresh</button>
+
+  <div id="message"></div>
 
   <h2>Records</h2>
-  <div style="margin-top:10px;">
-    <table id="recordsTable">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>TTL</th>
-          <th>A Record(s)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <input type="text" id="searchInput" placeholder="Cari record..." style="padding:8px;width:260px;margin-bottom:10px;" />
+
+  <table id="recordsTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>TTL</th>
+        <th>Record(s)</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script src="main.js"></script>
 </body>
