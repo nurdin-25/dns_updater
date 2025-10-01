@@ -1,112 +1,120 @@
-require('dotenv').config();
-const express = require('express');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const bodyParser = require('body-parser');
-const fs = require('fs');
-const path = require('path');
-const basicAuth = require('basic-auth');
-const { google } = require('googleapis');
+const express = require("express");
+const bodyParser = require("body-parser");
+const path = require("path");
+const basicAuth = require("express-basic-auth");
+const { DNS } = require("@google-cloud/dns");
+require("dotenv").config();
 
 const app = express();
-app.use(helmet());
-app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// Config
-const PROJECT_ID = process.env.PROJECT_ID;
-const MANAGED_ZONE = process.env.MANAGED_ZONE;
-let DOMAIN = process.env.DOMAIN || '';
-if (!DOMAIN.endsWith('.')) DOMAIN += '.';
-const KEY_FILE = process.env.KEY_FILE_PATH || './gcloud-dns-key.json';
-const ADMIN_USER = process.env.ADMIN_USER;
-const ADMIN_PASS = process.env.ADMIN_PASS;
-const PORT = process.env.PORT || 3000;
+const {
+  PROJECT_ID,
+  MANAGED_ZONE,
+  DOMAIN,
+  KEY_FILE_PATH,
+  PORT,
+  ADMIN_USER,
+  ADMIN_PASS,
+} = process.env;
 
-// Auth
-function requireBasicAuth(req, res, next) {
-  if (!ADMIN_USER || !ADMIN_PASS) return next();
-  const user = basicAuth(req);
-  if (!user || user.name !== ADMIN_USER || user.pass !== ADMIN_PASS) {
-    res.set('WWW-Authenticate', 'Basic realm="DNS Updater"');
-    return res.status(401).send('Authentication required.');
-  }
-  next();
-}
-
-// Rate limit
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
-app.use(limiter);
-
-// Service Account Key
-if (!fs.existsSync(KEY_FILE)) {
-  console.error('Key file not found:', KEY_FILE);
+if (!PROJECT_ID || !MANAGED_ZONE || !DOMAIN || !KEY_FILE_PATH) {
+  console.error("❌ Pastikan semua variabel .env sudah terisi");
   process.exit(1);
 }
-const keyJson = require(path.resolve(KEY_FILE));
-const auth = new google.auth.GoogleAuth({
-  credentials: keyJson,
-  scopes: ['https://www.googleapis.com/auth/ndev.clouddns.readwrite'],
+
+// Setup Google Cloud DNS client
+const dns = new DNS({
+  projectId: PROJECT_ID,
+  keyFilename: KEY_FILE_PATH,
 });
-const dns = google.dns('v1');
 
-// Helper: add/update record
-async function addOrUpdateARecord(subdomain, ip) {
-  const authClient = await auth.getClient();
-  google.options({ auth: authClient });
+// Setup Basic Auth
+app.use(
+  ["/api", "/"],
+  basicAuth({
+    users: { [ADMIN_USER]: ADMIN_PASS },
+    challenge: true,
+  })
+);
 
-  const name = `${subdomain}.${DOMAIN}`;
-  const nameDot = name.endsWith('.') ? name : name + '.';
+// Serve UI
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
-  const res = await dns.resourceRecordSets.list({
-    project: PROJECT_ID,
-    managedZone: MANAGED_ZONE,
-  });
-  const rrsets = res.data.rrsets || [];
-  const exist = rrsets.find(r => r.name === nameDot && r.type === 'A');
-
-  const changeBody = {
-    additions: [{
-      name: nameDot,
-      type: 'A',
-      ttl: 300,
-      rrdatas: [ip],
-    }],
-  };
-  if (exist) changeBody.deletions = [exist];
-
-  return dns.changes.create({
-    project: PROJECT_ID,
-    managedZone: MANAGED_ZONE,
-    requestBody: changeBody,
-  });
-}
-
-// Routes
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.post('/api/dns', requireBasicAuth, async (req, res) => {
+// API: ambil semua record A
+app.get("/api/records", async (req, res) => {
   try {
-    const { subdomain, ip } = req.body;
-    if (!subdomain || !ip) {
-      return res.status(400).json({ ok: false, message: 'Missing subdomain or ip' });
+  const zone = dns.zone(MANAGED_ZONE);
+  // Ambil semua record A di zone
+  const [records] = await zone.getRecords({ type: "A" });
+  res.json(records.map((r) => r.metadata));
+  } catch (err) {
+    console.error("❌ Records error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: tambah/update record A
+app.post("/api/add", async (req, res) => {
+  try {
+    const { name, ip } = req.body;
+    if (!name || !ip) {
+      return res.status(400).json({ error: "Missing name or ip" });
     }
-    const result = await addOrUpdateARecord(subdomain, ip);
-    res.json({ ok: true, data: result.data });
+
+    const zone = dns.zone(MANAGED_ZONE);
+
+    // Pastikan DOMAIN selalu ada titik di akhir
+    const domainName = DOMAIN.endsWith(".") ? DOMAIN : DOMAIN + ".";
+    // Pastikan subdomain dan domain dipisah titik
+    const recordName = name ? `${name}.${domainName}` : domainName;
+
+    // Cari record lama
+    const [records] = await zone.getRecords({ name: recordName, type: "A" });
+
+    // Jika record sudah ada dan isinya persis sama, tidak perlu update
+    if (
+      records.length === 1 &&
+      records[0].metadata.rrdatas.length === 1 &&
+      records[0].metadata.rrdatas[0] === ip
+    ) {
+      return res.json({
+        success: true,
+        message: "No change needed (record already exists)",
+        record: records[0].metadata,
+      });
+    }
+
+    // Buat record baru
+    const newRecord = zone.record("a", {
+      name: recordName,
+      ttl: 300,
+      data: [ip],
+    });
+
+    // Siapkan perubahan
+    let change = {};
+    if (records.length === 0) {
+      // Record belum ada, hanya tambahkan
+      change = { additions: [newRecord] };
+    } else {
+      // Record sudah ada, hapus dulu lalu tambahkan
+      change = { additions: [newRecord], deletions: records };
+    }
+
+    await zone.createChange(change);
+    return res.json({ success: true, record: newRecord.metadata });
+
   } catch (err) {
-    res.status(500).json({ ok: false, message: err.message });
+    console.error("❌ Add error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/list', requireBasicAuth, async (req, res) => {
-  try {
-    const authClient = await auth.getClient();
-    google.options({ auth: authClient });
-    const r = await dns.resourceRecordSets.list({ project: PROJECT_ID, managedZone: MANAGED_ZONE });
-    res.json({ ok: true, data: r.data.rrsets });
-  } catch (err) {
-    res.status(500).json({ ok: false, message: err.message });
-  }
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server jalan di http://localhost:${PORT}`);
 });
-
-app.listen(PORT, () => console.log(`DNS Updater running on port ${PORT}`));
