@@ -4,48 +4,14 @@
   <meta charset="UTF-8">
   <title>DNS Updater</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 40px;
-      background: #f8f9fa;
-    }
-    h1 {
-      color: #333;
-    }
-    input {
-      padding: 8px;
-      margin: 5px;
-      width: 250px;
-    }
-    button {
-      padding: 10px 20px;
-      margin: 10px;
-      background: #007BFF;
-      border: none;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    table {
-      margin: 20px auto;
-      border-collapse: collapse;
-      width: 80%;
-      background: white;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ddd;
-      text-align: center;
-    }
-    th {
-      background: #007BFF;
-      color: white;
-    }
+    body { font-family: Arial, sans-serif; text-align: center; margin: 40px; background: #f8f9fa; }
+    h1 { color: #333; }
+    input { padding: 8px; margin: 5px; width: 250px; }
+    button { padding: 10px 20px; margin: 10px; background: #007BFF; border: none; color: white; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    table { margin: 20px auto; border-collapse: collapse; width: 80%; background: white; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+    th { background: #007BFF; color: white; }
   </style>
 </head>
 <body>
@@ -54,11 +20,11 @@
   <div>
     <input type="text" id="dnsName" placeholder="Subdomain (contoh: test)" />
     <input type="text" id="dnsIp" placeholder="IP Address (contoh: 103.xxx.xxx.xxx)" />
-    <button id="btnAdd">Add / Update</button>
+    <button id="btnAdd">Add / Update</button> <!-- ✅ id harus btnAdd -->
   </div>
 
   <h2>Records</h2>
-  <button id="btnRefresh">Refresh</button>
+  <button id="btnRefresh">Refresh</button> <!-- ✅ id harus btnRefresh -->
   <div id="records"></div>
 
   <script src="main.js"></script>
