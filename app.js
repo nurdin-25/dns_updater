@@ -1,63 +1,44 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const path = require("path");
-const basicAuth = require("express-basic-auth");
-const { DNS } = require("@google-cloud/dns");
 require("dotenv").config();
+const path = require("path");
+const express = require("express");
+const { DNS } = require("@google-cloud/dns");
 
 const app = express();
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json());
+app.use(express.static("public")); // UI dari folder public
 
-const {
-  PROJECT_ID,
-  MANAGED_ZONE,
-  DOMAIN,
-  KEY_FILE_PATH,
-  PORT,
-  ADMIN_USER,
-  ADMIN_PASS,
-} = process.env;
+// Load ENV
+const PROJECT_ID = process.env.PROJECT_ID;
+const MANAGED_ZONE = process.env.MANAGED_ZONE;
+const DOMAIN = process.env.DOMAIN.endsWith(".") ? process.env.DOMAIN : process.env.DOMAIN + ".";
+const KEY_FILE_PATH = process.env.KEY_FILE_PATH;
 
 if (!PROJECT_ID || !MANAGED_ZONE || !DOMAIN || !KEY_FILE_PATH) {
-  console.error("❌ Pastikan semua variabel .env sudah terisi");
+  console.error("❌ Missing environment variables in .env");
   process.exit(1);
 }
 
-// Setup Google Cloud DNS client
+// Init Google Cloud DNS client
 const dns = new DNS({
   projectId: PROJECT_ID,
-  keyFilename: KEY_FILE_PATH,
+  keyFilename: path.resolve(KEY_FILE_PATH),
 });
 
-// Setup Basic Auth
-app.use(
-  ["/api", "/"],
-  basicAuth({
-    users: { [ADMIN_USER]: ADMIN_PASS },
-    challenge: true,
-  })
-);
+// ========== ROUTES ==========
 
-// Serve UI
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// API: ambil semua record A
+// API: ambil semua records
 app.get("/api/records", async (req, res) => {
   try {
-  const zone = dns.zone(MANAGED_ZONE);
-  // Ambil semua record A di zone
-  const [records] = await zone.getRecords({ type: "A" });
-  res.json(records.map((r) => r.metadata));
+    const zone = dns.zone(MANAGED_ZONE);
+    const [records] = await zone.getRecords();
+    res.json(records.map(r => r.metadata));
   } catch (err) {
     console.error("❌ Records error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// API: tambah/update record A
+// API: tambah / update record A
 app.post("/api/add", async (req, res) => {
   try {
     const { name, ip } = req.body;
@@ -66,21 +47,14 @@ app.post("/api/add", async (req, res) => {
     }
 
     const zone = dns.zone(MANAGED_ZONE);
+    const recordName = `${name}.${DOMAIN}`; // contoh: test.goldstore.id.
 
-    // Pastikan DOMAIN selalu ada titik di akhir
-    const domainName = DOMAIN.endsWith(".") ? DOMAIN : DOMAIN + ".";
-    // Pastikan subdomain dan domain dipisah titik
-    const recordName = name ? `${name}.${domainName}` : domainName;
-
-    // Cari record lama
+    // Ambil existing record
     const [records] = await zone.getRecords({ name: recordName, type: "A" });
+    const deletions = records.length ? records : [];
 
-    // Jika record sudah ada dan isinya persis sama, tidak perlu update
-    if (
-      records.length === 1 &&
-      records[0].metadata.rrdatas.length === 1 &&
-      records[0].metadata.rrdatas[0] === ip
-    ) {
+    // Kalau record sudah sama persis, skip
+    if (records.length && records[0].metadata.rrdatas.includes(ip)) {
       return res.json({
         success: true,
         message: "No change needed (record already exists)",
@@ -88,33 +62,37 @@ app.post("/api/add", async (req, res) => {
       });
     }
 
-    // Buat record baru
-    const newRecord = zone.record("a", {
-      name: recordName,
-      ttl: 300,
-      data: [ip],
+    // Record baru
+    const additions = [
+      {
+        name: recordName,
+        type: "A",
+        ttl: 300,
+        rrdatas: [ip],
+      },
+    ];
+
+    // Buat perubahan
+    const [change] = await zone.createChange({ additions, deletions });
+
+    res.json({
+      success: true,
+      record: additions[0],
+      change: change.metadata,
     });
-
-    // Siapkan perubahan
-    let change = {};
-    if (records.length === 0) {
-      // Record belum ada, hanya tambahkan
-      change = { additions: [newRecord] };
-    } else {
-      // Record sudah ada, hapus dulu lalu tambahkan
-      change = { additions: [newRecord], deletions: records };
-    }
-
-    await zone.createChange(change);
-    return res.json({ success: true, record: newRecord.metadata });
-
   } catch (err) {
-    console.error("❌ Add error:", err);
+    console.error("❌ Add error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
+// Root
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 // Start server
+const PORT = process.env.PORT || 3344;
 app.listen(PORT, () => {
   console.log(`🚀 Server jalan di http://localhost:${PORT}`);
 });

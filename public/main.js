@@ -1,72 +1,69 @@
 async function addRecord() {
-  const name = document.getElementById("name").value.trim();
-  const ip = document.getElementById("ip").value.trim();
-  const msg = document.getElementById("message");
-  msg.style.color = '#d9534f';
-  msg.textContent = '';
+  const name = document.getElementById("dnsName").value.trim();
+  const ip = document.getElementById("dnsIp").value.trim();
+
   if (!name || !ip) {
-    msg.textContent = 'Subdomain dan IP wajib diisi!';
+    alert("Isi Subdomain dan IP Address!");
     return;
   }
+
   try {
     const res = await fetch("/api/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, ip })
+      body: JSON.stringify({ name, ip }),
     });
     const data = await res.json();
-    if (data.success) {
-      msg.style.color = '#28a745';
-      msg.textContent = 'Berhasil update record!';
+    if (res.ok) {
+      alert("✅ Success: " + JSON.stringify(data));
+      refreshRecords();
     } else {
-      msg.textContent = data.error || 'Gagal update record!';
+      alert("❌ Error: " + JSON.stringify(data));
     }
-    await refreshRecords();
   } catch (err) {
-    msg.textContent = 'Error: ' + err.message;
+    console.error("Add Record Error:", err);
+    alert("Request failed");
   }
 }
 
 async function refreshRecords() {
-  const msg = document.getElementById("message");
   try {
     const res = await fetch("/api/records");
-    const records = await res.json();
-    const tbody = document.querySelector("#recordsTable tbody");
-    tbody.innerHTML = "";
-    if (!Array.isArray(records) || !records || records.length === 0) {
-      const row = document.createElement("tr");
-      row.innerHTML = '<td colspan="3" style="text-align:center;">Belum ada record</td>';
-      tbody.appendChild(row);
-      return;
-    }
-    records.forEach(r => {
+    const data = await res.json();
+
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>TTL</th>
+        <th>RRDatas</th>
+      </tr>
+    `;
+
+    data.forEach(record => {
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${r.name}</td>
-        <td>${r.ttl}</td>
-        <td>${(r.rrdatas||[]).join(", ")}</td>
+        <td>${record.name}</td>
+        <td>${record.type}</td>
+        <td>${record.ttl}</td>
+        <td>${record.rrdatas.join(", ")}</td>
       `;
-      tbody.appendChild(row);
+      table.appendChild(row);
     });
+
+    document.getElementById("records").innerHTML = "";
+    document.getElementById("records").appendChild(table);
+
   } catch (err) {
-    msg.textContent = 'Gagal memuat records: ' + err.message;
+    console.error("Refresh Records Error:", err);
+    alert("Failed to load records");
   }
 }
 
-document.getElementById("addBtn").addEventListener("click", addRecord);
-document.getElementById("refreshBtn").addEventListener("click", refreshRecords);
+// Attach events
+document.getElementById("btnAdd").addEventListener("click", addRecord);
+document.getElementById("btnRefresh").addEventListener("click", refreshRecords);
 
-window.onload = refreshRecords;
-
-app.get("/api/records", async (req, res) => {
-  try {
-    const zone = dns.zone(MANAGED_ZONE);
-    // Ambil semua record A di zone
-    const [records] = await zone.getRecords({ type: "A" });
-    res.json(records.map((r) => r.metadata));
-  } catch (err) {
-    console.error("❌ Records error:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
+// Auto load records on page load
+refreshRecords();
