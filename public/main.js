@@ -61,9 +61,13 @@ async function refreshRecords() {
   }
 }
 
-// Attach events
-document.getElementById("btnAdd").addEventListener("click", addRecord);
-document.getElementById("btnRefresh").addEventListener("click", refreshRecords);
+document.addEventListener("DOMContentLoaded", () => {
+  const btnAdd = document.getElementById("btnAdd");
+  const btnRefresh = document.getElementById("btnRefresh");
+
+  if (btnAdd) btnAdd.addEventListener("click", addRecord);
+  if (btnRefresh) btnRefresh.addEventListener("click", refreshRecords);
+});
 
 // Auto load records on page load
 refreshRecords();

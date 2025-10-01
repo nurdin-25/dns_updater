@@ -17,15 +17,27 @@
 <body>
   <h1>DNS Updater</h1>
 
-  <div>
+  <div style="margin-bottom:20px;">
     <input type="text" id="dnsName" placeholder="Subdomain (contoh: test)" />
     <input type="text" id="dnsIp" placeholder="IP Address (contoh: 103.xxx.xxx.xxx)" />
-    <button id="btnAdd">Add / Update</button> <!-- ✅ id harus btnAdd -->
+    <button id="btnAdd">Add / Update</button>
+    <div id="message" style="margin:10px 0;color:#d9534f;"></div>
   </div>
 
   <h2>Records</h2>
-  <button id="btnRefresh">Refresh</button> <!-- ✅ id harus btnRefresh -->
-  <div id="records"></div>
+  <button id="btnRefresh">Refresh</button>
+  <div style="margin-top:10px;">
+    <table id="recordsTable" style="width:80%;margin:auto;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>TTL</th>
+          <th>A Record(s)</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 
   <script src="main.js"></script>
 </body>
