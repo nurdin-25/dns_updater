@@ -1,75 +1,63 @@
-require("dotenv").config();
-const express = require("express");
-const bodyParser = require("body-parser");
-const path = require("path");
-const { DNS } = require("@google-cloud/dns");
+import express from "express";
+import bodyParser from "body-parser";
+import path from "path";
+import { fileURLToPath } from "url";
+import { DNS } from "@google-cloud/dns";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3344; // Ensure PORT is set from .env
+const PORT = process.env.PORT || 3344;
 
 // Middleware
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public"))); // Serve index.html, main.js dll
+app.use(express.static(path.join(__dirname, "public")));
 
 // Google Cloud DNS Client
 const dns = new DNS({
-  projectId: process.env.PROJECT_ID,
-  keyFilename: process.env.KEY_FILE_PATH,
+  projectId: process.env.GCLOUD_PROJECT_ID,
+  keyFilename: path.join(__dirname, "gcloud-dns-key.json"),
 });
 
-const zone = dns.zone(process.env.MANAGED_ZONE);
+const zoneName = process.env.DNS_ZONE;
 
-// ---- API ENDPOINTS ---- //
-
-// ✅ Get all records
+// ✅ GET records
 app.get("/api/records", async (req, res) => {
   try {
-    const [records] = await zone.getRecords({ type: "A" }); // Fetch all A records
-    res.json(
-      records.map(r => ({
-        name: r.name,
-        ttl: r.ttl,
-        rrdatas: r.data,
-      }))
-    );
+    const zone = dns.zone(zoneName);
+    const [records] = await zone.getRecords({ type: "A" });
+    res.json(records);
   } catch (err) {
-    console.error("❌ Records error:", err);
+    console.error("Records error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Add / Update record
+// ✅ ADD / UPDATE record
 app.post("/api/add", async (req, res) => {
   const { name, ip } = req.body;
-  if (!name || !ip) {
-    return res.status(400).json({ error: "Name and IP required" });
-  }
+  if (!name || !ip) return res.status(400).json({ error: "Missing name/ip" });
 
   try {
-    const fqdn = `${name}.${DOMAIN}.`; // Ensure DOMAIN is used correctly
+    const zone = dns.zone(zoneName);
+
+    // record lama
     const record = zone.record("a", {
-      name: fqdn,
-      data: ip,
+      name: `${name}.${process.env.DNS_DOMAIN}.`,
       ttl: 300,
+      data: ip,
     });
 
-    // Cari record lama
-    const [records] = await zone.getRecords({ name: fqdn, type: "A" });
-
-    const change = records.length
-      ? { add: record, delete: records[0] }
-      : { add: record };
-
-    await zone.createChange(change);
-
-    res.json({ success: true, fqdn, ip });
+    await zone.addRecords(record);
+    res.json({ success: true });
   } catch (err) {
-    console.error("❌ Add error:", err);
+    console.error("Add error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ---- Start Server ---- //
+// ✅ Run server
 app.listen(PORT, () => {
-  console.log(`🚀 Server jalan di http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
