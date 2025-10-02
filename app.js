@@ -79,17 +79,9 @@ app.post("/api/add", async (req, res) => {
       return res.status(400).json({ error: "Name hanya huruf/angka/dash (-)" });
     }
 
-    const fqdn = toFqdnFromSub(name); // misal: admine.goldstore.id.
+    const fqdn = toFqdnFromSub(name);
     const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
 
-    // Buat record baru
-    const newRecord = zone.record("a", {
-      name: fqdn,
-      ttl: 300,
-      rrdatas: [ip],
-    });
-
-    // Jika record sudah ada, tolak saja
     if (existing.length > 0) {
       return res.status(400).json({
         success: false,
@@ -97,16 +89,21 @@ app.post("/api/add", async (req, res) => {
       });
     }
 
-    // Log detail untuk debug
-    console.log("[ADD] fqdn:", fqdn);
-    console.log("[ADD] newRecord:", newRecord);
-    // Buat perubahan: tambah baru
-    const changes = zone.change({
-      add: [newRecord],
-    });
-    await changes.create();
+    const additions = [
+      {
+        name: fqdn,
+        type: "A",
+        ttl: 300,
+        rrdatas: [ip],
+      },
+    ];
 
-    res.json({ success: true, message: `Record ${fqdn} berhasil ditambahkan.` });
+    console.log("[ADD] fqdn:", fqdn);
+    console.log("[ADD] additions:", additions);
+
+    await zone.createChange({ additions });
+
+    res.json({ success: true, message: `✅ Record ${fqdn} berhasil ditambahkan.` });
   } catch (err) {
     console.error("❌ Add error:", err);
     res.status(500).json({ error: err.message });
