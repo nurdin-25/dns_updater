@@ -68,7 +68,6 @@ app.get("/api/records", async (req, res) => {
 });
 
 // ADD / UPDATE A record
-// ADD / UPDATE A record
 app.post("/api/add", async (req, res) => {
   try {
     const { name, ip } = req.body;
@@ -82,44 +81,31 @@ app.post("/api/add", async (req, res) => {
         .json({ error: "Name hanya huruf/angka/dash (-)" });
     }
 
-    const fqdn = toFqdnFromSub(name);
+    const fqdn = toFqdnFromSub(name); // contoh: admine.goldstore.id.
     const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
 
-    // --- CASE 1: Sudah ada dan IP sama -> skip
-    if (
-      existing.length > 0 &&
-      existing.some((r) => (r.rrdatas || []).includes(ip))
-    ) {
-      return res.json({
-        success: true,
-        message: "Record sudah sama, tidak ada perubahan",
-      });
-    }
-
-    let additions = [];
-    let deletions = [];
-
-    // --- CASE 2: Sudah ada tapi IP beda -> replace
+    // --- CASE 1: Kalau sudah ada dengan name sama → tolak
     if (existing.length > 0) {
-      deletions = existing;
-      additions = [{ name: fqdn, type: "A", ttl: 300, rrdatas: [ip] }];
-    }
-
-    // --- CASE 3: Belum ada record -> add baru
-    if (existing.length === 0) {
-      additions = [{ name: fqdn, type: "A", ttl: 300, rrdatas: [ip] }];
-    }
-
-    // Safety check kalau tetap kosong
-    if (additions.length === 0 && deletions.length === 0) {
-      return res.json({
-        success: true,
-        message: "Tidak ada perubahan yang perlu dibuat",
+      return res.status(400).json({
+        success: false,
+        error: `Record dengan nama ${fqdn} sudah ada. Gunakan subdomain lain.`,
       });
     }
 
-    await zone.createChange({ additions, deletions });
-    res.json({ success: true, message: "Record berhasil ditambahkan/diupdate" });
+    // --- CASE 2: Tambah record baru
+    const additions = [
+      {
+        name: fqdn,
+        type: "A",
+        ttl: 300,
+        rrdatas: [ip],
+      },
+    ];
+
+    const [change] = await zone.createChange({ additions });
+    console.log("✅ Change submitted:", change.id);
+
+    res.json({ success: true, message: "Record berhasil ditambahkan" });
   } catch (err) {
     console.error("❌ Add error:", err);
     res.status(500).json({ error: err.message });
