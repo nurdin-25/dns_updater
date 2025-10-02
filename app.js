@@ -86,7 +86,7 @@ app.post("/api/add", async (req, res) => {
     const newRecord = zone.record("a", {
       name: fqdn,
       ttl: 300,
-      data: ip,
+      rrdatas: [ip],
     });
 
     // Jika record sudah ada, tolak saja
