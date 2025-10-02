@@ -44,8 +44,8 @@ const zone = dns.zone(MANAGED_ZONE);
 
 // Helper: generate FQDN dari subdomain
 function toFqdnFromSub(sub) {
-  const cleanDomain = DOMAIN.replace(/\.$/, "");
-  return `${sub}.${cleanDomain}.`;
+  const cleanDomain = DOMAIN.replace(/\.$/, ""); // hapus titik terakhir kalau ada
+  return `${sub}.${cleanDomain}.`; // tambahkan titik di belakang
 }
 
 // ==================== API ====================
@@ -82,13 +82,15 @@ app.post("/api/add", async (req, res) => {
     const fqdn = toFqdnFromSub(name);
     const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
 
+    // 🚫 Kalau sudah ada → tolak
     if (existing.length > 0) {
       return res.status(400).json({
         success: false,
-        error: `❌ Record ${fqdn} sudah ada. Gunakan nama subdomain lain.`,
+        error: `❌ Record ${fqdn} sudah ada. Gunakan subdomain lain.`,
       });
     }
 
+    // ✅ Buat record baru
     const additions = [
       {
         name: fqdn,
@@ -98,8 +100,7 @@ app.post("/api/add", async (req, res) => {
       },
     ];
 
-    console.log("[ADD] fqdn:", fqdn);
-    console.log("[ADD] additions:", additions);
+    console.log("[ADD] fqdn:", fqdn, "→", ip);
 
     await zone.createChange({ additions });
 
@@ -120,13 +121,11 @@ app.delete("/api/delete", async (req, res) => {
     if (!records || records.length === 0) {
       return res.status(404).json({ error: "Record tidak ditemukan" });
     }
-    // Hanya hapus jika ada record
-    if (records.length > 0) {
-      await zone.createChange({ deletions: records });
-      return res.json({ success: true, message: "Record berhasil dihapus" });
-    } else {
-      return res.status(404).json({ error: "Record tidak ditemukan" });
-    }
+
+    await zone.createChange({ deletions: records });
+
+    console.log("🗑️ Record berhasil dihapus:", fqdn);
+    res.json({ success: true, message: "Record berhasil dihapus" });
   } catch (err) {
     console.error("❌ Delete error:", err);
     res.status(500).json({ error: err.message });
