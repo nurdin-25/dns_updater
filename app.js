@@ -1,4 +1,3 @@
-// app.js
 const express = require("express");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
@@ -43,7 +42,7 @@ app.use(
 const dns = new DNS({ projectId: PROJECT_ID, keyFilename: KEY_FILE_PATH });
 const zone = dns.zone(MANAGED_ZONE);
 
-// Helper: generate FQDN
+// Helper: generate FQDN dari subdomain
 function toFqdnFromSub(sub) {
   const cleanDomain = DOMAIN.replace(/\.$/, "");
   return `${sub}.${cleanDomain}.`;
@@ -72,13 +71,14 @@ app.get("/api/records", async (req, res) => {
 app.post("/api/add", async (req, res) => {
   try {
     const { name, ip } = req.body;
-    if (!name || !ip)
+    if (!name || !ip) {
       return res.status(400).json({ error: "Name dan IP wajib diisi" });
+    }
 
     if (!/^[a-zA-Z0-9-]+$/.test(name)) {
       return res
         .status(400)
-        .json({ error: "Name hanya boleh huruf/angka/dash (-)" });
+        .json({ error: "Name hanya huruf/angka/dash (-)" });
     }
 
     const fqdn = toFqdnFromSub(name); // contoh: admine.goldstore.id.
@@ -87,11 +87,19 @@ app.post("/api/add", async (req, res) => {
     const additions = [{ name: fqdn, type: "A", ttl: 300, rrdatas: [ip] }];
     const deletions = existing.length > 0 ? existing : [];
 
-    // kalau sudah sama -> skip
+    // kalau record sudah sama → skip
     if (deletions.some((d) => (d.rrdatas || []).includes(ip))) {
       return res.json({
         success: true,
         message: "Record sudah sama, tidak ada perubahan",
+      });
+    }
+
+    // kalau additions & deletions kosong → skip
+    if (additions.length === 0 && deletions.length === 0) {
+      return res.json({
+        success: true,
+        message: "Tidak ada perubahan yang perlu dibuat",
       });
     }
 
