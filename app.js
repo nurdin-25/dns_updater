@@ -97,6 +97,9 @@ app.post("/api/add", async (req, res) => {
       });
     }
 
+    // Log detail untuk debug
+    console.log("[ADD] fqdn:", fqdn);
+    console.log("[ADD] newRecord:", newRecord);
     // Buat perubahan: tambah baru
     const changes = zone.change({
       add: [newRecord],
