@@ -70,7 +70,7 @@ app.get("/api/records", async (req, res) => {
 // ADD / UPDATE A record
 app.post("/api/add", async (req, res) => {
   try {
-    const { name, ip } = req.body;
+    const { "name": name, "ip": ip } = req.body;
     if (!name || !ip) {
       return res.status(400).json({ error: "Name dan IP wajib diisi" });
     }
