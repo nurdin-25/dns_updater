@@ -79,32 +79,41 @@ app.post("/api/add", async (req, res) => {
       return res.status(400).json({ error: "Name hanya huruf/angka/dash (-)" });
     }
 
-    const fqdn = toFqdnFromSub(name);
-    const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
+    const fqdn = toFqdnFromSub(name); // contoh: admine.goldstore.id.
 
-    // 🚫 Kalau sudah ada → tolak
-    if (existing.length > 0) {
+    // cek apakah sudah ada
+    const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
+    if (existing && existing.length > 0) {
       return res.status(400).json({
         success: false,
         error: `❌ Record ${fqdn} sudah ada. Gunakan subdomain lain.`,
       });
     }
 
-    // ✅ Buat record baru
+    // bikin additions baru
     const additions = [
       {
         name: fqdn,
         type: "A",
         ttl: 300,
-        rrdatas: [ip],
+        rrdatas: [String(ip)], // pastikan string
       },
     ];
 
-    console.log("[ADD] fqdn:", fqdn, "→", ip);
+    console.log("👉 Akan createChange:", JSON.stringify(additions, null, 2));
 
+    // safety check sebelum request
+    if (!additions || additions.length === 0) {
+      return res.status(400).json({ error: "Tidak ada additions yang valid" });
+    }
+
+    // kirim perubahan
     await zone.createChange({ additions });
 
-    res.json({ success: true, message: `✅ Record ${fqdn} berhasil ditambahkan.` });
+    res.json({
+      success: true,
+      message: `✅ Record ${fqdn} berhasil ditambahkan dengan IP ${ip}`,
+    });
   } catch (err) {
     console.error("❌ Add error:", err);
     res.status(500).json({ error: err.message });
