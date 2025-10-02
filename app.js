@@ -123,9 +123,13 @@ app.delete("/api/delete", async (req, res) => {
     if (!records || records.length === 0) {
       return res.status(404).json({ error: "Record tidak ditemukan" });
     }
-
-    await zone.createChange({ deletions: records });
-    res.json({ success: true, message: "Record berhasil dihapus" });
+    // Hanya hapus jika ada record
+    if (records.length > 0) {
+      await zone.createChange({ deletions: records });
+      return res.json({ success: true, message: "Record berhasil dihapus" });
+    } else {
+      return res.status(404).json({ error: "Record tidak ditemukan" });
+    }
   } catch (err) {
     console.error("❌ Delete error:", err);
     res.status(500).json({ error: err.message });
