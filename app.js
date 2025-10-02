@@ -68,6 +68,7 @@ app.get("/api/records", async (req, res) => {
 });
 
 // ADD / UPDATE A record
+// ADD / UPDATE A record
 app.post("/api/add", async (req, res) => {
   try {
     const { name, ip } = req.body;
@@ -81,21 +82,35 @@ app.post("/api/add", async (req, res) => {
         .json({ error: "Name hanya huruf/angka/dash (-)" });
     }
 
-    const fqdn = toFqdnFromSub(name); // contoh: admine.goldstore.id.
+    const fqdn = toFqdnFromSub(name);
     const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
 
-    const additions = [{ name: fqdn, type: "A", ttl: 300, rrdatas: [ip] }];
-    const deletions = existing.length > 0 ? existing : [];
-
-    // kalau record sudah sama → skip
-    if (deletions.some((d) => (d.rrdatas || []).includes(ip))) {
+    // --- CASE 1: Sudah ada dan IP sama -> skip
+    if (
+      existing.length > 0 &&
+      existing.some((r) => (r.rrdatas || []).includes(ip))
+    ) {
       return res.json({
         success: true,
         message: "Record sudah sama, tidak ada perubahan",
       });
     }
 
-    // kalau additions & deletions kosong → skip
+    let additions = [];
+    let deletions = [];
+
+    // --- CASE 2: Sudah ada tapi IP beda -> replace
+    if (existing.length > 0) {
+      deletions = existing;
+      additions = [{ name: fqdn, type: "A", ttl: 300, rrdatas: [ip] }];
+    }
+
+    // --- CASE 3: Belum ada record -> add baru
+    if (existing.length === 0) {
+      additions = [{ name: fqdn, type: "A", ttl: 300, rrdatas: [ip] }];
+    }
+
+    // Safety check kalau tetap kosong
     if (additions.length === 0 && deletions.length === 0) {
       return res.json({
         success: true,
