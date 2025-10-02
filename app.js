@@ -67,10 +67,10 @@ app.get("/api/records", async (req, res) => {
   }
 });
 
-// ADD / UPDATE A record
+// ADD A record (no duplicate allowed)
 app.post("/api/add", async (req, res) => {
   try {
-    const { "name": name, "ip": ip } = req.body;
+    const { name, ip } = req.body;
     if (!name || !ip) {
       return res.status(400).json({ error: "Name dan IP wajib diisi" });
     }
@@ -84,7 +84,7 @@ app.post("/api/add", async (req, res) => {
     const fqdn = toFqdnFromSub(name); // contoh: admine.goldstore.id.
     const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
 
-    // --- CASE 1: Kalau sudah ada dengan name sama → tolak
+    // --- CASE 1: Kalau sudah ada dengan name sama -> langsung tolak
     if (existing.length > 0) {
       return res.status(400).json({
         success: false,
@@ -92,7 +92,7 @@ app.post("/api/add", async (req, res) => {
       });
     }
 
-    // --- CASE 2: Tambah record baru
+    // --- CASE 2: Buat baru
     const additions = [
       {
         name: fqdn,
