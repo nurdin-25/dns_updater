@@ -67,7 +67,7 @@ app.get("/api/records", async (req, res) => {
   }
 });
 
-// ADD A record (no duplicate allowed)
+// Tambah A record (no duplicate allowed)
 app.post("/api/add", async (req, res) => {
   try {
     const { name, ip } = req.body;
@@ -76,23 +76,21 @@ app.post("/api/add", async (req, res) => {
     }
 
     if (!/^[a-zA-Z0-9-]+$/.test(name)) {
-      return res
-        .status(400)
-        .json({ error: "Name hanya huruf/angka/dash (-)" });
+      return res.status(400).json({ error: "Name hanya huruf/angka/dash (-)" });
     }
 
-    const fqdn = toFqdnFromSub(name); // contoh: admine.goldstore.id.
+    const fqdn = toFqdnFromSub(name); // misal: admine.goldstore.id.
     const [existing] = await zone.getRecords({ name: fqdn, type: "A" });
 
-    // --- CASE 1: Kalau sudah ada dengan name sama -> langsung tolak
+    // 🚫 Kalau sudah ada → tolak
     if (existing.length > 0) {
       return res.status(400).json({
         success: false,
-        error: `Record dengan nama ${fqdn} sudah ada. Gunakan subdomain lain.`,
+        error: `❌ Record ${fqdn} sudah ada. Gunakan nama subdomain lain.`,
       });
     }
 
-    // --- CASE 2: Buat baru
+    // ✅ Buat additions baru
     const additions = [
       {
         name: fqdn,
@@ -102,10 +100,15 @@ app.post("/api/add", async (req, res) => {
       },
     ];
 
-    const [change] = await zone.createChange({ additions });
-    console.log("✅ Change submitted:", change.id);
+    // Safety check
+    if (additions.length === 0) {
+      return res.status(400).json({ error: "Tidak ada data untuk ditambahkan" });
+    }
 
-    res.json({ success: true, message: "Record berhasil ditambahkan" });
+    // Buat perubahan di Cloud DNS
+    await zone.createChange({ additions });
+
+    res.json({ success: true, message: `✅ Record ${fqdn} berhasil dibuat` });
   } catch (err) {
     console.error("❌ Add error:", err);
     res.status(500).json({ error: err.message });
